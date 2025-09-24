@@ -1,0 +1,192 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card } from "@/components/ui/card";
+import { Send, Settings, LogOut, Users, MessageCircle } from "lucide-react";
+
+interface User {
+  id: string;
+  username: string;
+  avatar?: string;
+  status: "online" | "away" | "offline";
+}
+
+interface ChatInterfaceProps {
+  user: User;
+  onLogout: () => void;
+}
+
+export const ChatInterface = ({ user, onLogout }: ChatInterfaceProps) => {
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([
+    {
+      id: "1",
+      content: "Welcome to OffChat! 🎉",
+      sender: "system",
+      timestamp: new Date(),
+    },
+    {
+      id: "2",
+      content: "Connect with friends and start chatting!",
+      sender: "system",
+      timestamp: new Date(),
+    },
+  ]);
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+
+    const newMessage = {
+      id: Date.now().toString(),
+      content: message,
+      sender: user.id,
+      timestamp: new Date(),
+    };
+
+    setMessages([...messages, newMessage]);
+    setMessage("");
+  };
+
+  const getStatusColor = (status: User["status"]) => {
+    switch (status) {
+      case "online":
+        return "bg-status-online";
+      case "away":
+        return "bg-status-away";
+      case "offline":
+        return "bg-status-offline";
+      default:
+        return "bg-status-offline";
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-gradient-to-br from-background to-muted">
+      {/* Sidebar */}
+      <div className="w-80 bg-card/50 backdrop-blur-lg border-r border-border/50">
+        {/* User Profile */}
+        <div className="p-6 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={user.avatar} />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {user.username.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div
+                className={`absolute -bottom-1 -right-1 w-4 h-4 ${getStatusColor(
+                  user.status
+                )} rounded-full border-2 border-card`}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold truncate">{user.username}</h3>
+              <p className="text-sm text-muted-foreground truncate">@{user.username.toLowerCase().replace(/\s+/g, '')}</p>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm">
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Chat List */}
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5 text-muted-foreground" />
+            <h4 className="font-medium text-muted-foreground">Conversations</h4>
+          </div>
+          <div className="space-y-2">
+            <Card className="p-3 hover:bg-accent/50 cursor-pointer transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-secondary">GC</AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-status-online rounded-full border-2 border-card" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h5 className="font-medium truncate">General Chat</h5>
+                  <p className="text-sm text-muted-foreground truncate">
+                    Welcome to the community!
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Chat Header */}
+        <div className="p-6 border-b border-border/50 bg-card/30 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <MessageCircle className="h-6 w-6 text-primary" />
+            <div>
+              <h2 className="text-xl font-semibold">General Chat</h2>
+              <p className="text-sm text-muted-foreground">
+                Community discussion space
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex ${
+                msg.sender === user.id ? "justify-end" : "justify-start"
+              }`}
+            >
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                  msg.sender === user.id
+                    ? "bg-chat-bubble text-chat-bubble-foreground"
+                    : msg.sender === "system"
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-chat-bubble-other text-chat-bubble-other-foreground"
+                }`}
+              >
+                <p className="text-sm">{msg.content}</p>
+                <p className="text-xs opacity-70 mt-1">
+                  {msg.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Message Input */}
+        <div className="p-6 border-t border-border/50 bg-card/30 backdrop-blur-sm">
+          <form onSubmit={handleSendMessage} className="flex gap-3">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type your message..."
+              className="flex-1 transition-all duration-300 focus:shadow-glow"
+            />
+            <Button
+              type="submit"
+              className="bg-gradient-to-r from-primary to-primary-glow hover:shadow-glow transition-all duration-300"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
