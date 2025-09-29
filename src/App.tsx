@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 
 import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminDemo from "./pages/AdminDemo";
 import NotFound from "./pages/NotFound";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignupForm } from "@/components/auth/SignupForm";
@@ -55,20 +56,48 @@ const App = () => {
     if (stored) return JSON.parse(stored);
     return null;
   });
-  // User list with approval status, persisted in localStorage
-  const [users, setUsers] = useState<Array<{ id: string; username: string; password: string; status: "pending" | "approved" | "rejected"; avatar?: string; role?: string }>>(() => {
-  // Admin add user (approved by default)
-  const handleAddUser = (username: string, password: string, role: string) => {
-    if (users.some(u => u.username === username)) {
-      alert("Username already exists.");
-      return;
-    }
-    setUsers(prev => [...prev, { id: username, username, password, status: "approved", role }]);
-    alert("User added and approved.");
-  };
+  // Enhanced user list with full profile data
+  const [users, setUsers] = useState(() => {
     const stored = localStorage.getItem("offchat-users");
     if (stored) return JSON.parse(stored);
-    return [{ id: "admin", username: "admin", password: "admin", status: "approved" }];
+    return [
+      {
+        id: "admin",
+        username: "admin",
+        email: "admin@offchat.com",
+        password: "12341234",
+        status: "active",
+        role: "admin",
+        joinDate: "2024-01-01",
+        lastActive: "2 minutes ago",
+        messageCount: 1250,
+        reportCount: 0
+      },
+      {
+        id: "user1",
+        username: "john_doe",
+        email: "john@example.com",
+        password: "password",
+        status: "active",
+        role: "user",
+        joinDate: "2024-01-15",
+        lastActive: "1 hour ago",
+        messageCount: 89,
+        reportCount: 1
+      },
+      {
+        id: "user2",
+        username: "jane_smith",
+        email: "jane@example.com",
+        password: "password",
+        status: "suspended",
+        role: "user",
+        joinDate: "2024-01-10",
+        lastActive: "3 days ago",
+        messageCount: 156,
+        reportCount: 3
+      }
+    ];
   });
 
   // Persist users to localStorage whenever they change
@@ -91,7 +120,19 @@ const App = () => {
       alert("Username already exists.");
       return;
     }
-    setUsers(prev => [...prev, { id: username, username, password, status: "approved", role }]);
+    const newUser = {
+      id: username,
+      username,
+      email: `${username}@example.com`,
+      password,
+      status: "active" as const,
+      role,
+      joinDate: new Date().toISOString().split('T')[0],
+      lastActive: "Just now",
+      messageCount: 0,
+      reportCount: 0
+    };
+    setUsers(prev => [...prev, newUser]);
     alert("User added and approved.");
   };
 
@@ -106,15 +147,19 @@ const App = () => {
       alert("Your account is not approved yet.");
       return;
     }
-    if (userObj.status === "rejected") {
-      alert("Your account was rejected by admin.");
+    if (userObj.status === "banned") {
+      alert("Your account was banned by admin.");
+      return;
+    }
+    if (userObj.status === "suspended") {
+      alert("Your account is suspended.");
       return;
     }
     if (userObj.password !== password) {
       alert("Incorrect password.");
       return;
     }
-    // Approved and password matches
+    // Active and password matches
     setUser({ id: userObj.id, username: userObj.username, status: "online" });
   };
   // Signup always creates a pending user
@@ -123,7 +168,19 @@ const App = () => {
       alert("Username already exists.");
       return;
     }
-    setUsers(prev => [...prev, { id: username, username, password, status: "pending" }]);
+    const newUser = {
+      id: username,
+      username,
+      email: `${username}@example.com`,
+      password,
+      status: "pending" as const,
+      role: "user",
+      joinDate: new Date().toISOString().split('T')[0],
+      lastActive: "Never",
+      messageCount: 0,
+      reportCount: 0
+    };
+    setUsers(prev => [...prev, newUser]);
     alert("Account created! Waiting for admin approval.");
   };
   const handleLogout = () => {
@@ -132,10 +189,10 @@ const App = () => {
 
   // Admin actions
   const approveUser = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "approved" } : u));
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "active" } : u));
   };
   const rejectUser = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "rejected" } : u));
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: "banned" } : u));
   };
 
   return (
@@ -151,7 +208,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<AdminDemo />} />
               <Route path="/admin" element={<AdminDashboard users={users} approveUser={approveUser} rejectUser={rejectUser} addUser={handleAddUser} forceLogoutUser={handleForceLogoutUser} deleteUser={handleDeleteUser} />} />
               <Route
                 path="/login"
