@@ -116,7 +116,7 @@ const AdminDemo = () => {
               <a href="/admin">View Admin Dashboard</a>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/login">Login as Admin</a>
+              <a href="/admin-login">Login as Admin</a>
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">

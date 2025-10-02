@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Send, Settings, LogOut, Users, MessageCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { Label } from "@/components/ui/label";
 
 interface User {
   id: string;
@@ -15,10 +18,25 @@ interface User {
 interface ChatInterfaceProps {
   user: User;
   onLogout: () => void;
+  onUpdateUser?: (updates: Partial<User>) => void;
 }
 
-export const ChatInterface = ({ user, onLogout }: ChatInterfaceProps) => {
+export const ChatInterface = ({ user, onLogout, onUpdateUser }: ChatInterfaceProps) => {
   const [message, setMessage] = useState("");
+  const [avatar, setAvatar] = useState(user.avatar);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Sync avatar with user prop
+  useEffect(() => {
+    setAvatar(user.avatar);
+  }, [user.avatar]);
+
+  // Update global user when avatar changes
+  useEffect(() => {
+    if (avatar !== user.avatar && onUpdateUser) {
+      onUpdateUser({ avatar });
+    }
+  }, [avatar, user.avatar, onUpdateUser]);
   const [messages, setMessages] = useState([
     {
       id: "1",
@@ -71,7 +89,7 @@ export const ChatInterface = ({ user, onLogout }: ChatInterfaceProps) => {
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={user.avatar} />
+                <AvatarImage src={avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {user.username.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
@@ -87,9 +105,24 @@ export const ChatInterface = ({ user, onLogout }: ChatInterfaceProps) => {
               <p className="text-sm text-muted-foreground truncate">@{user.username.toLowerCase().replace(/\s+/g, '')}</p>
             </div>
             <div className="flex gap-1">
-              <Button variant="ghost" size="sm">
-                <Settings className="h-4 w-4" />
-              </Button>
+              <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Profile Settings</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Profile Image</Label>
+                      <ImageUpload value={avatar} onChange={setAvatar} />
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Button variant="ghost" size="sm" onClick={onLogout}>
                 <LogOut className="h-4 w-4" />
               </Button>

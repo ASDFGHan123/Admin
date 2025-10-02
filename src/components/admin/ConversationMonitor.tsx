@@ -12,8 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useState, useEffect } from "react";
 
-const mockConversations = [
+const initialConversations = [
   {
     id: 1,
     type: "private",
@@ -57,6 +58,28 @@ const mockConversations = [
 ];
 
 export const ConversationMonitor = () => {
+  const [conversations, setConversations] = useState(initialConversations);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setConversations(prev =>
+        prev.map(conv => {
+          // Randomly update message count
+          const messageIncrease = Math.floor(Math.random() * 5); // 0-4 messages
+          // Randomly change active status occasionally
+          const newActive = Math.random() < 0.1 ? !conv.isActive : conv.isActive; // 10% chance to toggle
+          return {
+            ...conv,
+            messageCount: conv.messageCount + messageIncrease,
+            isActive: newActive,
+            lastActivity: newActive ? "Just now" : conv.lastActivity,
+          };
+        })
+      );
+    }, 4000); // Update every 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
   return (
     <Card className="bg-gradient-card border-border/50">
       <CardHeader>
@@ -69,7 +92,7 @@ export const ConversationMonitor = () => {
           </div>
           <div className="flex items-center space-x-2">
             <Badge variant="secondary" className="bg-admin-success/20 text-admin-success border-admin-success/30">
-              {mockConversations.filter(c => c.isActive).length} Active
+              {conversations.filter(c => c.isActive).length} Active
             </Badge>
           </div>
         </div>
@@ -103,7 +126,7 @@ export const ConversationMonitor = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockConversations.map((conversation) => (
+            {conversations.map((conversation) => (
               <TableRow key={conversation.id}>
                 <TableCell>
                   <div className="flex items-center space-x-3">

@@ -1,7 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { useState, useEffect } from "react";
 
-const messageData = [
+const initialMessageData = [
   { time: "00:00", messages: 1200 },
   { time: "04:00", messages: 800 },
   { time: "08:00", messages: 2400 },
@@ -10,14 +11,14 @@ const messageData = [
   { time: "20:00", messages: 2000 },
 ];
 
-const messageTypeData = [
+const initialMessageTypeData = [
   { type: "Text", count: 45234, color: "#3b82f6" },
   { type: "Image", count: 12456, color: "#10b981" },
   { type: "File", count: 3234, color: "#f59e0b" },
   { type: "Voice", count: 1234, color: "#ef4444" },
 ];
 
-const dailyStats = [
+const initialDailyStats = [
   { day: "Mon", sent: 12000, delivered: 11800, read: 11200 },
   { day: "Tue", sent: 15000, delivered: 14700, read: 14100 },
   { day: "Wed", sent: 18000, delivered: 17600, read: 17000 },
@@ -32,6 +33,47 @@ interface MessageAnalyticsProps {
 }
 
 export const MessageAnalytics = ({ detailed = false }: MessageAnalyticsProps) => {
+  const [messageData, setMessageData] = useState(initialMessageData);
+  const [messageTypeData, setMessageTypeData] = useState(initialMessageTypeData);
+  const [dailyStats, setDailyStats] = useState(initialDailyStats);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Update message data - add new point and shift
+      setMessageData(prev => {
+        const newData = [...prev];
+        const lastTime = newData[newData.length - 1].time;
+        const [hours] = lastTime.split(':').map(Number);
+        const newHours = (hours + 4) % 24;
+        const newTime = `${newHours.toString().padStart(2, '0')}:00`;
+        const newMessages = Math.floor(Math.random() * 4000) + 500;
+        newData.shift();
+        newData.push({ time: newTime, messages: newMessages });
+        return newData;
+      });
+
+      // Update message type data
+      setMessageTypeData(prev =>
+        prev.map(type => ({
+          ...type,
+          count: type.count + Math.floor(Math.random() * 101) - 50 // -50 to +50
+        }))
+      );
+
+      // Update daily stats
+      setDailyStats(prev =>
+        prev.map(day => ({
+          ...day,
+          sent: day.sent + Math.floor(Math.random() * 201) - 100,
+          delivered: day.delivered + Math.floor(Math.random() * 201) - 100,
+          read: day.read + Math.floor(Math.random() * 201) - 100,
+        }))
+      );
+    }, 5000); // Update every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   if (detailed) {
     return (
       <div className="space-y-6">

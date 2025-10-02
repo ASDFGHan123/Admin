@@ -11,8 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useState, useEffect } from "react";
 
-const mockAuditLogs = [
+const initialAuditLogs = [
   {
     id: 1,
     action: "USER_LOGIN",
@@ -70,6 +71,10 @@ const mockAuditLogs = [
   },
 ];
 
+const actions = ["USER_LOGIN", "MESSAGE_SEND", "USER_LOGOUT", "GROUP_JOIN", "MESSAGE_DELETE"];
+const actors = ["john_doe", "alice_smith", "admin_user", "bob_wilson"];
+const severities = ["info", "warning", "high"];
+
 const getSeverityColor = (severity: string) => {
   switch (severity) {
     case 'high':
@@ -93,6 +98,27 @@ const getSeverityBg = (severity: string) => {
 };
 
 export const AuditLogs = () => {
+  const [auditLogs, setAuditLogs] = useState(initialAuditLogs);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newLog = {
+        id: Date.now(),
+        action: actions[Math.floor(Math.random() * actions.length)],
+        actor: actors[Math.floor(Math.random() * actors.length)],
+        targetType: "USER",
+        targetId: Math.floor(Math.random() * 1000),
+        timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
+        description: "System action performed",
+        severity: severities[Math.floor(Math.random() * severities.length)],
+      };
+      setAuditLogs(prev => [newLog, ...prev.slice(0, 9)]); // Keep only 10 logs
+    }, 6000); // Add new log every 6 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Card className="bg-gradient-card border-border/50">
       <CardHeader>
@@ -139,7 +165,7 @@ export const AuditLogs = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockAuditLogs.map((log) => (
+            {auditLogs.map((log) => (
               <TableRow key={log.id} className={getSeverityBg(log.severity)}>
                 <TableCell>
                   <div className="flex items-center space-x-2">

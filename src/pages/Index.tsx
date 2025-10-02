@@ -24,7 +24,7 @@ const Index = () => {
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Secure, efficient messaging that works even when you're offline. 
-            Connect with your team anywhere, anytime.
+            Connect with your team anytime.
           </p>
         </div>
         

@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,24 +20,47 @@ import {
 } from "@/components/ui/table";
 
 
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  status: "active" | "suspended" | "banned" | "pending";
+  avatar?: string;
+  role?: string;
+  joinDate: string;
+  lastActive: string;
+  messageCount: number;
+  reportCount: number;
+}
+
 interface UserManagementProps {
-  users: Array<{ id: string; username: string; status: "pending" | "approved" | "rejected"; avatar?: string; role?: string }>;
+  users: User[];
   approveUser: (id: string) => void;
   rejectUser: (id: string) => void;
-  addUser?: (username: string, password: string, role: string) => void;
+  addUser?: (username: string, password: string, role: string, avatar?: string) => void;
+  updateUser?: (id: string, updates: Partial<User>) => void;
   forceLogoutUser?: (id: string) => void;
   deleteUser?: (id: string) => void;
 }
 
-export const UserManagement = ({ users, approveUser, rejectUser, addUser, forceLogoutUser, deleteUser }: UserManagementProps) => {
+export const UserManagement = ({ users, approveUser, rejectUser, addUser, updateUser, forceLogoutUser, deleteUser }: UserManagementProps) => {
   const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null);
   const [confirmLogoutId, setConfirmLogoutId] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const [newUsername, setNewUsername] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [newRole, setNewRole] = React.useState("user");
+  const [newAvatar, setNewAvatar] = React.useState<string | undefined>(undefined);
   const [error, setError] = React.useState("");
   const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [roleFilter, setRoleFilter] = React.useState<string>("all");
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [editingUser, setEditingUser] = React.useState<User | null>(null);
+  const [editUsername, setEditUsername] = React.useState("");
+  const [editEmail, setEditEmail] = React.useState("");
+  const [editRole, setEditRole] = React.useState("user");
+  const [editAvatar, setEditAvatar] = React.useState<string | undefined>(undefined);
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,19 +69,47 @@ export const UserManagement = ({ users, approveUser, rejectUser, addUser, forceL
       return;
     }
     if (addUser) {
-      addUser(newUsername, newPassword, newRole);
+      addUser(newUsername, newPassword, newRole, newAvatar);
       setOpen(false);
       setNewUsername("");
       setNewPassword("");
       setNewRole("user");
+      setNewAvatar(undefined);
       setError("");
     }
   };
 
-  // Filter users by search
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setEditUsername(user.username);
+    setEditEmail(user.email);
+    setEditRole(user.role || "user");
+    setEditAvatar(user.avatar);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    if (updateUser) {
+      updateUser(editingUser.id, {
+        username: editUsername,
+        email: editEmail,
+        role: editRole,
+        avatar: editAvatar,
+      });
+      alert("User updated successfully.");
+    }
+    setEditingUser(null);
+  };
+
+  // Filter users by search, status, and role
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(search.toLowerCase()) ||
+                         user.email.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    return matchesSearch && matchesStatus && matchesRole;
+  });
 
   return (
     <Card className="bg-gradient-card border-border/50">
@@ -95,6 +149,11 @@ export const UserManagement = ({ users, approveUser, rejectUser, addUser, forceL
                     <option value="admin">Admin</option>
                   </select>
                 </div>
+                <div>
+                  <Label>Profile Image (optional)</Label>
+                  <ImageUpload value={newAvatar} onChange={setNewAvatar} />
+                  <p className="text-xs text-muted-foreground mt-1">Upload an image or leave empty for system-generated avatar</p>
+                </div>
                 {error && <div className="text-red-500 text-sm">{error}</div>}
                 <DialogFooter>
                   <Button type="submit" className="bg-admin-primary hover:bg-admin-primary/90">Add</Button>
@@ -105,22 +164,113 @@ export const UserManagement = ({ users, approveUser, rejectUser, addUser, forceL
               </form>
             </DialogContent>
           </Dialog>
+
+          {/* Edit User Dialog */}
+          <Dialog open={!!editingUser} onOpenChange={open => !open && setEditingUser(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit User</DialogTitle>
+                <DialogDescription>Update user information and settings.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSaveEdit} className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-username">Username</Label>
+                  <Input id="edit-username" value={editUsername} onChange={e => setEditUsername(e.target.value)} required />
+                </div>
+                <div>
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input id="edit-email" type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} required />
+                </div>
+                <div>
+                  <Label htmlFor="edit-role">Role</Label>
+                  <select id="edit-role" className="w-full border rounded-md p-2" value={editRole} onChange={e => setEditRole(e.target.value)}>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Profile Image</Label>
+                  <ImageUpload value={editAvatar} onChange={setEditAvatar} />
+                </div>
+                <DialogFooter>
+                  <Button type="submit" className="bg-admin-primary hover:bg-admin-primary/90">Save Changes</Button>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancel</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-        {/* Search and Filters (not functional in demo) */}
+        {/* Search and Filters */}
         <div className="flex items-center space-x-4 mt-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search users..."
+              placeholder="Search users by username or email..."
               className="pl-10 bg-input border-border"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </Button>
+          <Popover open={showFilters} onOpenChange={setShowFilters}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
+                {(statusFilter !== "all" || roleFilter !== "all") && (
+                  <span className="ml-1 bg-primary text-primary-foreground rounded-full w-2 h-2" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                      <SelectItem value="banned">Banned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Role</Label>
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="user">User</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setRoleFilter("all");
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                  <Button size="sm" onClick={() => setShowFilters(false)}>
+                    Apply
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </CardHeader>
       <CardContent>
@@ -139,7 +289,7 @@ export const UserManagement = ({ users, approveUser, rejectUser, addUser, forceL
                 <TableCell>
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
+                      <AvatarImage src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
                       <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
@@ -149,8 +299,9 @@ export const UserManagement = ({ users, approveUser, rejectUser, addUser, forceL
                 </TableCell>
                 <TableCell>
                   {user.status === "pending" && <Badge variant="secondary">Pending</Badge>}
-                  {user.status === "approved" && <Badge variant="default">Approved</Badge>}
-                  {user.status === "rejected" && <Badge variant="destructive">Rejected</Badge>}
+                  {user.status === "active" && <Badge variant="default">Active</Badge>}
+                  {user.status === "suspended" && <Badge variant="secondary">Suspended</Badge>}
+                  {user.status === "banned" && <Badge variant="destructive">Banned</Badge>}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "User"}</Badge>
@@ -165,6 +316,7 @@ export const UserManagement = ({ users, approveUser, rejectUser, addUser, forceL
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
+                    <Button size="sm" variant="outline" onClick={() => handleEditUser(user)}>Edit</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmLogoutId(user.id)}>Force Logout</Button>
                     <Button size="sm" variant="destructive" onClick={() => setConfirmDeleteId(user.id)}>Delete</Button>
                   </div>
