@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { StatsCards } from "@/components/admin/StatsCards";
 import { UserManagement } from "@/components/admin/UserManagement";
@@ -16,6 +17,11 @@ import { MessageAnalytics } from "@/components/admin/MessageAnalytics";
 import { ConversationMonitor } from "@/components/admin/ConversationMonitor";
 import { AuditLogs } from "@/components/admin/AuditLogs";
 import { BackupManager } from "@/components/admin/BackupManager";
+import { SystemMessageDialog } from "@/components/admin/SystemMessageDialog";
+import { MessageTemplateDialog } from "@/components/admin/MessageTemplateDialog";
+import { UserSelectionDialog } from "@/components/admin/UserSelectionDialog";
+import { MessageHistory } from "@/components/admin/MessageHistory";
+import { MessageModeration } from "@/components/admin/MessageModeration";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface User {
@@ -91,6 +97,13 @@ const AdminDashboard = ({ users, roles, conversations, messageTemplates, user, a
   const [showProfile, setShowProfile] = React.useState(false);
   const [showModeration, setShowModeration] = React.useState(false);
   const [showDataTools, setShowDataTools] = React.useState(false);
+  const [showSystemMessageDialog, setShowSystemMessageDialog] = React.useState(false);
+  const [messageDialogMode, setMessageDialogMode] = React.useState<"system" | "broadcast" | "targeted">("system");
+  const [selectedUsersForMessage, setSelectedUsersForMessage] = React.useState<string[]>([]);
+  const [showTemplateDialog, setShowTemplateDialog] = React.useState(false);
+  const [templateDialogMode, setTemplateDialogMode] = React.useState<"add" | "edit">("add");
+  const [selectedTemplate, setSelectedTemplate] = React.useState<MessageTemplate | null>(null);
+  const [showUserSelectionDialog, setShowUserSelectionDialog] = React.useState(false);
 
   const handleViewProfile = (user: User) => {
     setSelectedUser(user);
@@ -120,6 +133,96 @@ const AdminDashboard = ({ users, roles, conversations, messageTemplates, user, a
   const handleDeleteData = (userId: string, options: any) => {
     console.log('Delete data:', userId, options);
     // Implement data deletion
+  };
+
+  const handleSendSystemMessage = async (content: string, priority?: string) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('Sending system message:', { content, priority });
+    // In real implementation, call the API
+    if (sendSystemMessage) {
+      // For now, send to a dummy conversation
+      sendSystemMessage("system-conversation", content);
+    }
+  };
+
+  const handleSendBulkMessage = async (content: string, priority?: string) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('Sending bulk message:', { content, priority, userCount: users.length });
+    // In real implementation, call the API
+    if (sendBulkMessage) {
+      sendBulkMessage(users.map(u => u.id), content);
+    }
+  };
+
+  const handleSendTargetedMessage = async (content: string, priority?: string) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('Sending targeted message:', { content, priority, users: selectedUsersForMessage });
+    // In real implementation, call the API
+  };
+
+  const handleOpenSystemMessageDialog = (mode: "system" | "broadcast" | "targeted" = "system") => {
+    setMessageDialogMode(mode);
+    setShowSystemMessageDialog(true);
+  };
+
+  const handleSendMessage = async (content: string, priority?: string) => {
+    switch (messageDialogMode) {
+      case "system":
+        await handleSendSystemMessage(content, priority);
+        break;
+      case "broadcast":
+        await handleSendBulkMessage(content, priority);
+        break;
+      case "targeted":
+        await handleSendTargetedMessage(content, priority);
+        break;
+    }
+  };
+
+  const handleAddTemplate = () => {
+    setSelectedTemplate(null);
+    setTemplateDialogMode("add");
+    setShowTemplateDialog(true);
+  };
+
+  const handleEditTemplate = (template: MessageTemplate) => {
+    setSelectedTemplate(template);
+    setTemplateDialogMode("edit");
+    setShowTemplateDialog(true);
+  };
+
+  const handleUseTemplate = (template: MessageTemplate) => {
+    // Pre-fill the system message dialog with template content
+    setMessageDialogMode("system");
+    setShowSystemMessageDialog(true);
+    // Note: In a real implementation, you'd pass the template content to the dialog
+  };
+
+  const handleSaveTemplate = async (templateData: Omit<MessageTemplate, "id">) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('Saving template:', templateData);
+    // In real implementation, call API to save template
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('Deleting template:', templateId);
+    // In real implementation, call API to delete template
+  };
+
+  const handleOpenUserSelection = () => {
+    setShowUserSelectionDialog(true);
+  };
+
+  const handleUserSelectionConfirm = (selectedUserIds: string[]) => {
+    setSelectedUsersForMessage(selectedUserIds);
+    setMessageDialogMode("targeted");
+    setShowSystemMessageDialog(true);
   };
 
   return (
@@ -209,7 +312,10 @@ const AdminDashboard = ({ users, roles, conversations, messageTemplates, user, a
                         <CardTitle>Admin Messaging</CardTitle>
                         <CardDescription>Send system messages and announcements</CardDescription>
                       </div>
-                      <Button className="bg-admin-primary hover:bg-admin-primary/90">
+                      <Button
+                        className="bg-admin-primary hover:bg-admin-primary/90"
+                        onClick={() => handleOpenSystemMessageDialog("system")}
+                      >
                         <MessageSquare className="w-4 h-4 mr-2" />
                         Send System Message
                       </Button>
@@ -237,7 +343,11 @@ const AdminDashboard = ({ users, roles, conversations, messageTemplates, user, a
                           <p className="text-sm text-muted-foreground mb-3">
                             Send a message to all active users in the system
                           </p>
-                          <Button size="sm" className="w-full">
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handleOpenSystemMessageDialog("broadcast")}
+                          >
                             Broadcast Message
                           </Button>
                         </div>
@@ -246,7 +356,12 @@ const AdminDashboard = ({ users, roles, conversations, messageTemplates, user, a
                           <p className="text-sm text-muted-foreground mb-3">
                             Send messages to specific user groups or individuals
                           </p>
-                          <Button size="sm" variant="outline" className="w-full">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            onClick={handleOpenUserSelection}
+                          >
                             Select Recipients
                           </Button>
                         </div>
@@ -270,16 +385,48 @@ const AdminDashboard = ({ users, roles, conversations, messageTemplates, user, a
                               <p className="text-sm text-muted-foreground">{template.category}</p>
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUseTemplate(template)}
+                              >
                                 Use
                               </Button>
-                              <Button size="sm" variant="ghost">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditTemplate(template)}
+                              >
                                 Edit
                               </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+                                    Delete
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Template</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete the template "{template.name}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteTemplate(template.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </div>
                         ))}
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline" className="w-full" onClick={handleAddTemplate}>
                           <UserPlus className="w-4 h-4 mr-2" />
                           Add Template
                         </Button>
@@ -289,6 +436,10 @@ const AdminDashboard = ({ users, roles, conversations, messageTemplates, user, a
 
                   <MessageAnalytics detailed />
                 </div>
+
+                <MessageHistory />
+
+                <MessageModeration />
               </div>
             </TabsContent>
 
@@ -502,6 +653,31 @@ const AdminDashboard = ({ users, roles, conversations, messageTemplates, user, a
           />
         </>
       )}
+
+      <SystemMessageDialog
+        isOpen={showSystemMessageDialog}
+        onClose={() => setShowSystemMessageDialog(false)}
+        onSendMessage={handleSendMessage}
+        mode={messageDialogMode}
+        selectedUsers={selectedUsersForMessage}
+        totalUsers={users.length}
+      />
+
+      <MessageTemplateDialog
+        isOpen={showTemplateDialog}
+        onClose={() => setShowTemplateDialog(false)}
+        onSave={handleSaveTemplate}
+        template={selectedTemplate}
+        mode={templateDialogMode}
+      />
+
+      <UserSelectionDialog
+        isOpen={showUserSelectionDialog}
+        onClose={() => setShowUserSelectionDialog(false)}
+        onConfirm={handleUserSelectionConfirm}
+        users={users}
+        preSelectedUsers={selectedUsersForMessage}
+      />
     </div>
   );
 };
